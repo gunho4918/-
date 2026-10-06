@@ -417,16 +417,16 @@
       "대장간 뒷마당에 굴러다니던 막대기. 누군가는 땔감이라 불렀지만, 당신은 여기서 모든 것을 시작하기로 했다.",
       "칼로 껍질을 벗기고 손잡이에 끈을 감았다. 아직 막대기지만 왠지 손에 착 감긴다.",
       "마을 아이들이 기사 놀이를 할 때 쓰는 나무 검. 휘두르면 제법 그럴듯한 바람 소리가 난다.",
-      "나무검을 모루 위에 두고 잠시 외출하고 돌아오니 녹슨 단검이 되어 있었다. 누군가 장난을 친 모양이다.",
-      "녹을 어느 정도 벗기니 그 윤곽이 어느정도 보인다. 처음엔 구리검으로 보였지만 철검이 맞다.",
+      "오래된 우물 바닥에서 건져 올린 단검. 녹이 슬었어도 날 끝만큼은 아직 살아 있다.",
+      "폐허가 된 성채의 무기고에서 발견한 검. 한때 이름 없는 병사의 손에 들려 있었으리라.",
       "녹을 벗겨내고 다시 벼려낸 철검. 드디어 '진짜 검'이라 부를 만하다.",
       "쇠를 수없이 접고 두드려 만든 검. 부러지지 않는 단단함이 자랑이다.",
-      "왕국 기사단이 쓰는 정식 장검. 저번에 만든 강철검을 본 기사단원이 제작을 의뢰했다.",
-      "은을 입혀 달빛 아래에서 은은하게 빛난다. 은을 입혀 아름답긴 하지만 전투에 큰 도움이 되지는 않는다.",
-      "보름달이 뜬 밤에만 벼릴 수 있었다는 검. 기사단 마법사의 도움을 받았다.",
-      "북쪽 설산의 얼음 정령이 깃든 검. 기사단이 서리 여왕의 무기고에서 서리했다.",
-      "화산 깊은 곳의 용암으로 담금질한 검. 손잡이가 늘 따뜻해서 겨울에 특히 인기다. 신기하게 칼날은 뜨겁지 않다.",
-      "폭풍우 치는 밤, 탑 꼭대기에 꽂아두었더니 번개를 품게 되었다. 가끔 손이 따끔거린다. 피카츄를 안고 있는 지우형이 된 기분이다.",
+      "왕국 기사단이 쓰는 정식 장검. 붉은 손잡이는 맹세를 끝까지 지킨다는 뜻이라 한다.",
+      "은을 입혀 달빛 아래에서 은은하게 빛난다. 어둠 속 괴물들이 가장 꺼리는 검.",
+      "보름달이 뜬 밤에만 벼릴 수 있었다는 검. 칼날에 푸른 달빛이 스며 있다.",
+      "북쪽 설산의 얼음 정령이 깃든 검. 칼집에서 뽑을 때마다 주위에 서리가 맺힌다.",
+      "화산 깊은 곳의 용암으로 담금질한 검. 손잡이가 늘 따뜻해서 겨울에 특히 인기다.",
+      "폭풍우 치는 밤, 탑 꼭대기에 꽂아두었더니 번개를 품게 되었다. 가끔 손이 찌릿하다.",
       "왕의 보물고에 바쳐질 만큼 화려한 검. 너무 아까워서 실전에 쓰는 사람은 없다고 한다.",
       "칼날 전체를 하나의 거대한 루비로 깎아냈다. 붉은 빛이 적의 기세를 꺾는다.",
       "늙은 용이 스스로 벗어준 비늘로 만든 검. 용에게 인정받은 자만이 쥘 수 있다.",
@@ -533,6 +533,35 @@
 
     loadStats();
 
+    /* ===== 진행 상황 저장 (골드, 현재 검, 아이템) ===== */
+    const PROGRESS_KEY = "sword-game-progress";
+
+    function saveProgress() {
+      try {
+        const data = { gold: gold, level: level, inventory: inventory };
+        localStorage.setItem(PROGRESS_KEY, JSON.stringify(data));
+      } catch (e) {
+        /* 저장 실패해도 게임은 계속 */
+      }
+    }
+
+    /* 저장된 진행 상황이 있으면 불러오고 true를 돌려줌 */
+    function loadProgress() {
+      try {
+        const saved = localStorage.getItem(PROGRESS_KEY);
+        if (saved) {
+          const data = JSON.parse(saved);
+          gold = data.gold;
+          level = data.level;
+          Object.assign(inventory, data.inventory);
+          return true;
+        }
+      } catch (e) {
+        /* 저장소를 쓸 수 없으면 새 게임으로 시작 */
+      }
+      return false;
+    }
+
     /* ===== 상점 화면 만들기 ===== */
     /* shopUI.luck.count 처럼 아이템별 화면 요소를 꺼낼 수 있게 저장 */
     const shopUI = {};
@@ -635,6 +664,9 @@
     /* 현재 상태를 화면에 그리기 */
     function render() {
       const s = swords[level];
+
+      /* 화면을 다시 그릴 때마다 진행 상황 저장 */
+      saveProgress();
 
       goldText.textContent = "💰 " + gold.toLocaleString() + " G";
       bestText.textContent =
@@ -786,13 +818,17 @@
           stats.broken[level]++;
           saveStats();
           showMessage("💥 +" + level + " " + s.name + "이(가) 파괴되었습니다!", "destroy");
+
+          /* 연출 도중 창을 닫아도 검을 살릴 수 없도록, 파괴 결과는 바로 저장 */
+          level = 0;
+          saveProgress();
+
           setSwordEffect("shatter");
           flashScreen("red");
           quakeCard();
 
           setTimeout(function () {
             setSwordEffect("");
-            level = 0;
             endEnhance();
           }, 800);
         }
@@ -817,8 +853,12 @@
       render();
     });
 
+    /* 처음부터 다시 시작: 진행 상황만 지우고, 도감과 기록은 유지 */
     document.getElementById("restart").addEventListener("click", function () {
-      location.reload();
+      if (confirm("지금 가진 검, 골드, 아이템을 모두 잃고 처음부터 시작할까요?\n(도감과 기록은 남아요)")) {
+        localStorage.removeItem(PROGRESS_KEY);
+        location.reload();
+      }
     });
 
     /* ===== 도감 ===== */
@@ -909,12 +949,18 @@
 
     /* 기록 초기화 */
     document.getElementById("reset-stats").addEventListener("click", function () {
-      if (confirm("도감과 모든 기록을 지울까요? 되돌릴 수 없어요.")) {
+      if (confirm("도감, 기록, 진행 중인 게임까지 모두 지울까요? 되돌릴 수 없어요.")) {
         localStorage.removeItem(SAVE_KEY);
+        localStorage.removeItem(PROGRESS_KEY);
         location.reload();
       }
     });
 
+    /* ===== 게임 시작 ===== */
+    if (loadProgress()) {
+      showMessage("💾 지난 게임을 이어서 합니다", "success");
+    }
+    checkBankrupt();
     render();
   </script>
 </body>
