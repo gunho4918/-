@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>검 강화하기</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1e2130;
+      color: #ffffff;
+      text-align: center;
+    }
+    #gold {
+      font-size: 20px;
+      font-weight: bold;
+      color: #f2b84b;
+    }
+
+    /* 강화 카드와 상점을 나란히 배치 */
+    #game {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-top: 12px;
+    }
+
+    #card {
+      padding: 24px 40px;
+      background: #2a2e42;
+      border-radius: 16px;
+    }
+    #sword-img {
+      width: 120px;
+      height: 200px;
+    }
+    #sword-name {
+      font-size: 22px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    #info {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #c8cbe0;
+    }
+    .danger { color: #ff6b6b; }
+    .safe   { color: #7be495; }
+    #message {
+      min-height: 24px;
+      margin: 12px 0;
+      font-weight: bold;
+    }
+    #message.success  { color: #7be495; }
+    #message.fail     { color: #c8cbe0; }
+    #message.destroy  { color: #ff6b6b; }
+    #message.charging { color: #f2b84b; }
+
+    button {
+      padding: 10px 24px;
+      margin: 0 4px;
+      font-size: 17px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #enhance {
+      background: #f2b84b;
+      color: #2a2e42;
+    }
+    #sell {
+      background: #4a90d9;
+      color: #ffffff;
+    }
+    #restart,
+    #dex-open {
+      margin-top: 16px;
+      padding: 6px 16px;
+      font-size: 14px;
+      background: #444a66;
+      color: #ffffff;
+    }
+    #dex-open {
+      background: #8a5cf6;
+    }
+    #best {
+      margin-top: 4px;
+      font-size: 14px;
+      color: #c8cbe0;
+    }
+
+    /* ===== 도감 (화면 위에 덮이는 창) ===== */
+    #dex {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    #dex.hidden {
+      display: none;
+    }
+    #dex-box {
+      position: relative;
+      width: 720px;
+      max-width: 94%;
+      max-height: 90%;
+      overflow-y: auto;
+      padding: 20px;
+      background: #2a2e42;
+      border-radius: 16px;
+    }
+    #dex-box h2 {
+      margin: 0 0 12px;
+    }
+    #dex-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 4px 10px;
+      font-size: 16px;
+      background: #444a66;
+      color: #ffffff;
+    }
+    #stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .stat {
+      padding: 8px;
+      background: #1e2130;
+      border-radius: 10px;
+    }
+    .stat-value {
+      font-size: 20px;
+      font-weight: bold;
+      color: #f2b84b;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #a0a4c0;
+    }
+    #dex-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+      gap: 8px;
+    }
+    .dex-card {
+      padding: 6px 4px;
+      font-size: 12px;
+      background: #1e2130;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .dex-card img {
+      width: 48px;
+      height: 80px;
+    }
+    .dex-card.locked {
+      cursor: default;
+      color: #666a80;
+    }
+    .dex-card.locked img {
+      filter: brightness(0);
+      opacity: 0.35;
+    }
+    .dex-card.selected {
+      outline: 2px solid #f2b84b;
+    }
+    #dex-detail {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-height: 120px;
+      margin-top: 16px;
+      padding: 12px 16px;
+      text-align: left;
+      background: #1e2130;
+      border-radius: 12px;
+    }
+    #dex-detail img {
+      width: 72px;
+      height: 120px;
+    }
+    .detail-name {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .detail-story {
+      margin: 6px 0;
+      line-height: 1.6;
+      color: #e0e2f0;
+    }
+    .detail-record {
+      font-size: 13px;
+      color: #a0a4c0;
+    }
+    #reset-stats {
+      margin-top: 16px;
+      padding: 6px 14px;
+      font-size: 13px;
+      background: #5a2a35;
+      color: #ffffff;
+    }
+    #card button:disabled,
+    #shop button:disabled {
+      background: #666666;
+      color: #aaaaaa;
+      cursor: default;
+    }
+
+    /* ===== 상점 ===== */
+    #shop {
+      width: 280px;
+      padding: 16px;
+      background: #2a2e42;
+      border-radius: 16px;
+      text-align: left;
+    }
+    #shop h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+      text-align: center;
+    }
+    .item {
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      background: #1e2130;
+      border-radius: 10px;
+    }
+    .item-title {
+      font-weight: bold;
+    }
+    .count {
+      float: right;
+      font-size: 14px;
+      color: #f2b84b;
+    }
+    .item-desc {
+      margin: 4px 0 8px;
+      font-size: 13px;
+      color: #a0a4c0;
+    }
+    .item button {
+      padding: 6px 12px;
+      margin: 0 6px 0 0;
+      font-size: 14px;
+    }
+    .buy {
+      background: #7be495;
+      color: #1e2130;
+    }
+    .use {
+      background: #c86bff;
+      color: #ffffff;
+    }
+    .item label {
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    /* ===== 이펙트 ===== */
+    .charging {
+      animation: shake 0.15s infinite;
+      filter: drop-shadow(0 0 6px #fff3a0);
+    }
+    .charging-hard {
+      animation: shake-hard 0.08s infinite;
+      filter: brightness(1.4) drop-shadow(0 0 16px #fff3a0);
+    }
+    @keyframes shake {
+      0%   { transform: translate(0, 0) rotate(0deg); }
+      25%  { transform: translate(-2px, 1px) rotate(-2deg); }
+      50%  { transform: translate(2px, -1px) rotate(2deg); }
+      75%  { transform: translate(-1px, -1px) rotate(-1deg); }
+      100% { transform: translate(0, 0) rotate(0deg); }
+    }
+    @keyframes shake-hard {
+      0%   { transform: translate(0, 0) rotate(0deg); }
+      25%  { transform: translate(-5px, 2px) rotate(-5deg); }
+      50%  { transform: translate(5px, -2px) rotate(5deg); }
+      75%  { transform: translate(-3px, -2px) rotate(-3deg); }
+      100% { transform: translate(0, 0) rotate(0deg); }
+    }
+    .pop {
+      animation: pop 0.6s ease-out;
+    }
+    @keyframes pop {
+      0%   { transform: scale(0.8); filter: brightness(2) drop-shadow(0 0 0 #ffe066); }
+      40%  { transform: scale(1.3); filter: brightness(1.8) drop-shadow(0 0 24px #ffe066); }
+      100% { transform: scale(1);   filter: none; }
+    }
+    .dud {
+      animation: dud 0.5s ease-out;
+    }
+    @keyframes dud {
+      0%   { transform: translateY(0);   opacity: 1; }
+      50%  { transform: translateY(8px); opacity: 0.4; }
+      100% { transform: translateY(0);   opacity: 1; }
+    }
+    .shatter {
+      animation: shatter 0.7s ease-in forwards;
+    }
+    @keyframes shatter {
+      0%   { transform: scale(1);    opacity: 1; filter: none; }
+      30%  { transform: scale(1.15); opacity: 1; filter: brightness(2) drop-shadow(0 0 24px #ff3b3b); }
+      100% { transform: scale(0.2) rotate(40deg); opacity: 0; filter: drop-shadow(0 0 24px #ff3b3b); }
+    }
+    #card.quake {
+      animation: quake 0.5s;
+    }
+    @keyframes quake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-12px); }
+      40% { transform: translateX(10px); }
+      60% { transform: translateX(-8px); }
+      80% { transform: translateX(5px); }
+    }
+    #flash {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0;
+    }
+    #flash.gold {
+      background: rgba(255, 220, 100, 0.35);
+      animation: flash 0.5s;
+    }
+    #flash.red {
+      background: rgba(255, 50, 50, 0.4);
+      animation: flash 0.7s;
+    }
+    @keyframes flash {
+      0%   { opacity: 0; }
+      20%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="flash"></div>
+  <h1>검 강화하기</h1>
+  <div id="gold"></div>
+  <div id="best"></div>
+
+  <div id="game">
+    <div id="card">
+      <img id="sword-img" src="images/sword0.svg">
+      <div id="sword-name"></div>
+      <div id="info"></div>
+      <div id="message">강화 버튼을 눌러보세요!</div>
+      <button id="enhance">강화하기</button>
+      <button id="sell">판매하기</button>
+    </div>
+
+    <div id="shop">
+      <h2>🏪 상점</h2>
+      <div id="shop-items"></div>
+    </div>
+  </div>
+
+  <button id="dex-open">📖 도감 · 기록</button>
+  <button id="restart">처음부터 다시 시작</button>
+
+  <!-- 도감 창 (처음엔 숨겨져 있음) -->
+  <div id="dex" class="hidden">
+    <div id="dex-box">
+      <button id="dex-close">✕</button>
+      <h2>📖 검 도감</h2>
+      <div id="stats"></div>
+      <div id="dex-grid"></div>
+      <div id="dex-detail"></div>
+      <button id="reset-stats">기록 초기화</button>
+    </div>
+  </div>
+
+  <script>
+    /* 단계별 데이터: 이름, 성공 확률(%), 파괴 확률(%), 강화 비용, 판매 가격 */
+    const swords = [
+      { name: "평범한 나무 막대기",   rate: 95, destroy: 0,  cost: 100,   price: 0 },
+      { name: "잘 다듬은 나무 막대기", rate: 95, destroy: 0,  cost: 150,   price: 150 },
+      { name: "목검",               rate: 90, destroy: 0,  cost: 200,   price: 400 },
+      { name: "녹슨 단검",           rate: 85, destroy: 0,  cost: 300,   price: 700 },
+      { name: "녹슨 철검",           rate: 80, destroy: 0,  cost: 400,   price: 1200 },
+      { name: "철검",               rate: 75, destroy: 1,  cost: 600,   price: 2000 },
+      { name: "강철 검",             rate: 70, destroy: 2,  cost: 800,   price: 3200 },
+      { name: "기사의 장검",          rate: 65, destroy: 3,  cost: 1000,  price: 5000 },
+      { name: "은빛 장검",           rate: 60, destroy: 4,  cost: 1300,  price: 7000 },
+      { name: "푸른 달빛의 검",       rate: 55, destroy: 5,  cost: 1600,  price: 10000 },
+      { name: "서리의 검",           rate: 50, destroy: 6,  cost: 2000,  price: 15000 },
+      { name: "불꽃의 검",           rate: 45, destroy: 8,  cost: 2500,  price: 21000 },
+      { name: "번개의 검",           rate: 40, destroy: 10, cost: 3000,  price: 29000 },
+      { name: "황금 검",             rate: 35, destroy: 12, cost: 4000,  price: 40000 },
+      { name: "루비 검",             rate: 30, destroy: 15, cost: 5000,  price: 57000 },
+      { name: "용비늘 검",           rate: 25, destroy: 20, cost: 6000,  price: 82000 },
+      { name: "그림자 검",           rate: 20, destroy: 25, cost: 8000,  price: 120000 },
+      { name: "별빛의 검",           rate: 15, destroy: 30, cost: 10000, price: 180000 },
+      { name: "천공의 검",           rate: 12, destroy: 35, cost: 12000, price: 280000 },
+      { name: "신성한 검",           rate: 10, destroy: 40, cost: 15000, price: 430000 },
+      { name: "전설의 검",           rate: 0,  destroy: 0,  cost: 0,     price: 1000000 }
+    ];
+
+    /* 도감에 실릴 검 이야기 (swords와 같은 순서) */
+    const stories = [
+      "대장간 뒷마당에 굴러다니던 막대기. 누군가는 땔감이라 불렀지만, 당신은 여기서 모든 것을 시작하기로 했다.",
+      "칼로 껍질을 벗기고 손잡이에 끈을 감았다. 아직 막대기지만 왠지 손에 착 감긴다.",
+      "마을 아이들이 기사 놀이를 할 때 쓰는 나무 검. 휘두르면 제법 그럴듯한 바람 소리가 난다.",
+      "나무검을 모루 위에 두고 잠시 외출하고 돌아오니 녹슨 단검이 되어 있었다. 누군가 장난을 친 모양이다.",
+      "녹을 어느 정도 벗기니 그 윤곽이 어느정도 보인다. 처음엔 구리검으로 보였지만 철검이 맞다.",
+      "녹을 벗겨내고 다시 벼려낸 철검. 드디어 '진짜 검'이라 부를 만하다.",
+      "쇠를 수없이 접고 두드려 만든 검. 부러지지 않는 단단함이 자랑이다.",
+      "왕국 기사단이 쓰는 정식 장검. 저번에 만든 강철검을 본 기사단원이 제작을 의뢰했다.",
+      "은을 입혀 달빛 아래에서 은은하게 빛난다. 은을 입혀 아름답긴 하지만 전투에 큰 도움이 되지는 않는다.",
+      "보름달이 뜬 밤에만 벼릴 수 있었다는 검. 기사단 마법사의 도움을 받았다.",
+      "북쪽 설산의 얼음 정령이 깃든 검. 기사단이 서리 여왕의 무기고에서 서리했다.",
+      "화산 깊은 곳의 용암으로 담금질한 검. 손잡이가 늘 따뜻해서 겨울에 특히 인기다. 신기하게 칼날은 뜨겁지 않다.",
+      "폭풍우 치는 밤, 탑 꼭대기에 꽂아두었더니 번개를 품게 되었다. 가끔 손이 따끔거린다. 피카츄를 안고 있는 지우형이 된 기분이다.",
+      "왕의 보물고에 바쳐질 만큼 화려한 검. 너무 아까워서 실전에 쓰는 사람은 없다고 한다.",
+      "칼날 전체를 하나의 거대한 루비로 깎아냈다. 붉은 빛이 적의 기세를 꺾는다.",
+      "늙은 용이 스스로 벗어준 비늘로 만든 검. 용에게 인정받은 자만이 쥘 수 있다.",
+      "빛을 삼키는 검. 칼날이 보이지 않아 상대는 언제 베였는지도 모른다.",
+      "밤하늘에서 떨어진 별똥별 조각으로 만들었다. 칼날 주위로 작은 별들이 반짝인다.",
+      "하늘섬의 수호자가 쓰던 검. 날개 장식이 펼쳐지면 잠시 하늘을 날 수 있다는 전설이 있다.",
+      "천 년 동안 신전 제단에 꽂혀 있던 검. 마음이 맑은 자의 손에서만 빛난다.",
+      "나무 막대기에서 시작해 여기까지 온 단 하나의 검. 이 검의 이야기는 당신이 직접 써 내려왔다."
+    ];
+
+    /* 상점 아이템 데이터 */
+    const LUCK_BONUS = 10; /* 행운의 부적: 성공 확률 +10% */
+    const JUMP_TO = 7;     /* 도약의 스크롤: +7로 이동 */
+
+    const items = [
+      { id: "luck",    icon: "🍀", name: "행운의 부적",   price: 3000, desc: "다음 강화의 성공 확률 +" + LUCK_BONUS + "%" },
+      { id: "protect", icon: "🛡️", name: "파괴 방지권",   price: 8000, desc: "다음 강화에서 검이 파괴되지 않음" },
+      { id: "jump",    icon: "📜", name: "도약의 스크롤", price: 6000, desc: "+" + (JUMP_TO - 1) + " 이하의 검을 즉시 +" + JUMP_TO + "로" }
+    ];
+
+    /* 가방: 아이템별 보유 개수 */
+    const inventory = { luck: 0, protect: 0, jump: 0 };
+
+    const MAX_LEVEL = 20;
+    let level = 0;
+    let gold = 10000;
+    let gameOver = false;
+    let isEnhancing = false;
+
+    const goldText = document.getElementById("gold");
+    const card = document.getElementById("card");
+    const flash = document.getElementById("flash");
+    const swordImg = document.getElementById("sword-img");
+    const swordName = document.getElementById("sword-name");
+    const info = document.getElementById("info");
+    const message = document.getElementById("message");
+    const enhanceBtn = document.getElementById("enhance");
+    const sellBtn = document.getElementById("sell");
+    const bestText = document.getElementById("best");
+
+    /* ===== 기록 저장 (브라우저를 껐다 켜도 남음) ===== */
+    const SAVE_KEY = "sword-game-stats";
+
+    /* 기본 기록. reached[i] = i단계 달성 횟수, broken[i] = i단계에서 파괴된 횟수 */
+    const stats = {
+      best: 0,
+      tries: 0,
+      success: 0,
+      destroyed: 0,
+      earned: 0,
+      clears: 0,
+      reached: new Array(swords.length).fill(0),
+      broken: new Array(swords.length).fill(0)
+    };
+
+    /* 저장된 기록 불러오기 */
+    function loadStats() {
+      try {
+        const saved = localStorage.getItem(SAVE_KEY);
+        if (saved) {
+          Object.assign(stats, JSON.parse(saved));
+        }
+      } catch (e) {
+        /* 저장소를 쓸 수 없는 환경이면 그냥 새 기록으로 시작 */
+      }
+      if (stats.reached[0] === 0) {
+        stats.reached[0] = 1; /* 나무 막대기는 처음부터 도감에 등록 */
+      }
+    }
+
+    /* 기록 저장하기 */
+    function saveStats() {
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(stats));
+      } catch (e) {
+        /* 저장 실패해도 게임은 계속 */
+      }
+    }
+
+    /* 새 단계에 도달했을 때 기록. 도감에 처음 등록되면 true를 돌려줌 */
+    function recordReach() {
+      const isNew = (stats.reached[level] === 0);
+      stats.reached[level]++;
+      if (level > stats.best) {
+        stats.best = level;
+      }
+      if (level === MAX_LEVEL) {
+        stats.clears++;
+      }
+      saveStats();
+      return isNew;
+    }
+
+    /* 도감에 등록된 검 개수 */
+    function countDiscovered() {
+      let count = 0;
+      for (let i = 0; i < swords.length; i++) {
+        if (stats.reached[i] > 0) {
+          count++;
+        }
+      }
+      return count;
+    }
+
+    loadStats();
+
+    /* ===== 상점 화면 만들기 ===== */
+    /* shopUI.luck.count 처럼 아이템별 화면 요소를 꺼낼 수 있게 저장 */
+    const shopUI = {};
+    const shopItems = document.getElementById("shop-items");
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const row = document.createElement("div");
+      row.className = "item";
+
+      let useHTML;
+      if (item.id === "jump") {
+        useHTML = "<button class='use'>사용</button>";
+      } else {
+        useHTML = "<label><input type='checkbox' class='use'> 다음 강화에 사용</label>";
+      }
+
+      row.innerHTML =
+        "<div class='item-title'>" + item.icon + " " + item.name +
+        " <span class='count'></span></div>" +
+        "<div class='item-desc'>" + item.desc + "</div>" +
+        "<button class='buy'>구매 " + item.price.toLocaleString() + "G</button>" +
+        useHTML;
+
+      shopUI[item.id] = {
+        count: row.querySelector(".count"),
+        buy: row.querySelector(".buy"),
+        use: row.querySelector(".use")
+      };
+
+      /* 구매 버튼 */
+      shopUI[item.id].buy.addEventListener("click", function () {
+        if (gold < item.price) {
+          showMessage("💸 골드가 부족해요!", "fail");
+          return;
+        }
+        gold -= item.price;
+        inventory[item.id]++;
+        showMessage(item.icon + " " + item.name + "을(를) 구매했습니다", "success");
+        render();
+      });
+
+      shopItems.appendChild(row);
+    }
+
+    /* 체크박스를 켜고 끌 때마다 확률 표시 갱신 */
+    shopUI.luck.use.addEventListener("change", render);
+    shopUI.protect.use.addEventListener("change", render);
+
+    /* 도약의 스크롤 사용 */
+    shopUI.jump.use.addEventListener("click", function () {
+      if (inventory.jump === 0 || level >= JUMP_TO || isEnhancing) {
+        return;
+      }
+      inventory.jump--;
+      level = JUMP_TO;
+      let text = "📜 도약! +" + JUMP_TO + " " + swords[JUMP_TO].name + "이(가) 되었습니다";
+      if (recordReach()) {
+        text += " 📖 도감 등록!";
+      }
+      showMessage(text, "success");
+      render();
+      setSwordEffect("pop");
+      flashScreen("gold");
+    });
+
+    /* ===== 확률 계산 ===== */
+    /* 행운의 부적을 쓰면 성공 확률 +10% (단, 파괴 확률 몫은 건드리지 않음) */
+    function getSuccessRate(s, luckOn) {
+      if (luckOn) {
+        return Math.min(s.rate + LUCK_BONUS, 100 - s.destroy);
+      }
+      return s.rate;
+    }
+
+    /* ===== 기본 함수들 ===== */
+    function showMessage(text, type) {
+      message.textContent = text;
+      message.className = type;
+    }
+
+    function setSwordEffect(effect) {
+      swordImg.className = "";
+      void swordImg.offsetWidth;
+      swordImg.className = effect;
+    }
+
+    function flashScreen(color) {
+      flash.className = "";
+      void flash.offsetWidth;
+      flash.className = color;
+    }
+
+    function quakeCard() {
+      card.classList.remove("quake");
+      void card.offsetWidth;
+      card.classList.add("quake");
+    }
+
+    /* 현재 상태를 화면에 그리기 */
+    function render() {
+      const s = swords[level];
+
+      goldText.textContent = "💰 " + gold.toLocaleString() + " G";
+      bestText.textContent =
+        "🏅 최고 기록 +" + stats.best + "  ·  📖 도감 " + countDiscovered() + " / " + swords.length;
+      swordImg.src = "images/sword" + level + ".svg";
+      swordName.textContent = "+" + level + " " + s.name;
+
+      /* 다 쓴 아이템은 체크 해제 */
+      if (inventory.luck === 0) {
+        shopUI.luck.use.checked = false;
+      }
+      if (inventory.protect === 0) {
+        shopUI.protect.use.checked = false;
+      }
+
+      const luckOn = shopUI.luck.use.checked;
+      const protectOn = shopUI.protect.use.checked && s.destroy > 0;
+
+      if (level < MAX_LEVEL) {
+        let rateLine = "성공 확률: " + getSuccessRate(s, luckOn) + "%";
+        if (luckOn) {
+          rateLine += " 🍀";
+        }
+
+        let destroyLine;
+        if (protectOn) {
+          destroyLine = "<span class='safe'>파괴 확률: 0% 🛡️</span>";
+        } else {
+          destroyLine = "<span class='danger'>파괴 확률: " + s.destroy + "%</span>";
+        }
+
+        info.innerHTML =
+          rateLine + "<br>" +
+          destroyLine + "<br>" +
+          "강화 비용: " + s.cost.toLocaleString() + " G<br>" +
+          "판매 가격: " + s.price.toLocaleString() + " G";
+      } else {
+        info.innerHTML = "더 이상 강화할 수 없는 최강의 검!";
+      }
+
+      enhanceBtn.disabled = (level === MAX_LEVEL || gameOver || isEnhancing);
+      sellBtn.disabled = (s.price === 0 || level === MAX_LEVEL || gameOver || isEnhancing);
+
+      /* 상점 갱신 */
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const ui = shopUI[item.id];
+        ui.count.textContent = "보유 " + inventory[item.id];
+        ui.buy.disabled = (gold < item.price || isEnhancing || gameOver);
+
+        if (item.id === "jump") {
+          ui.use.disabled = (inventory.jump === 0 || level >= JUMP_TO || isEnhancing);
+        } else {
+          ui.use.disabled = (inventory[item.id] === 0 || isEnhancing);
+        }
+      }
+    }
+
+    /* 파산: 나무 막대기 + 강화비도 없음 + 도약의 스크롤도 없음 */
+    function checkBankrupt() {
+      if (level === 0 && gold < swords[0].cost && inventory.jump === 0) {
+        gameOver = true;
+        showMessage("💸 파산! 더 이상 강화할 골드가 없습니다", "destroy");
+      }
+    }
+
+    function endEnhance() {
+      isEnhancing = false;
+      saveStats();
+      checkBankrupt();
+      render();
+    }
+
+    /* ===== 강화 ===== */
+    enhanceBtn.addEventListener("click", function () {
+      if (isEnhancing) {
+        return;
+      }
+      const s = swords[level];
+
+      if (gold < s.cost) {
+        showMessage("💸 골드가 부족해요! 검을 판매해서 골드를 모으세요", "fail");
+        return;
+      }
+
+      /* 체크된 아이템 사용 (방지권은 파괴 위험이 있을 때만 소모) */
+      const luckOn = shopUI.luck.use.checked;
+      const protectOn = shopUI.protect.use.checked && s.destroy > 0;
+      if (luckOn) {
+        inventory.luck--;
+      }
+      if (protectOn) {
+        inventory.protect--;
+      }
+      const rate = getSuccessRate(s, luckOn);
+
+      stats.tries++;
+      gold -= s.cost;
+      isEnhancing = true;
+      render();
+
+      showMessage("🔨 강화 중...", "charging");
+      setSwordEffect("charging");
+
+      const wait = 800 + level * 70;
+
+      setTimeout(function () {
+        setSwordEffect("charging-hard");
+      }, wait * 0.6);
+
+      setTimeout(function () {
+        showResult(s, rate, protectOn);
+      }, wait);
+    });
+
+    function showResult(s, rate, protectOn) {
+      const roll = Math.random() * 100;
+
+      if (roll < rate) {
+        /* 성공 */
+        level++;
+        stats.success++;
+        const isNew = recordReach();
+
+        let text;
+        if (level === MAX_LEVEL) {
+          text = "🏆 축하합니다! 전설의 검을 완성했습니다!";
+        } else {
+          text = "✨ 강화 성공! +" + level + "이 되었습니다";
+        }
+        if (isNew) {
+          text += " 📖 도감 등록!";
+        }
+        showMessage(text, "success");
+        endEnhance();
+        setSwordEffect("pop");
+        flashScreen("gold");
+
+      } else if (roll < rate + s.destroy) {
+        if (protectOn) {
+          /* 파괴될 뻔했지만 방지권이 막아줌 */
+          showMessage("🛡️ 파괴될 뻔했지만 방지권이 검을 지켜냈습니다!", "charging");
+          setSwordEffect("dud");
+          quakeCard();
+          endEnhance();
+        } else {
+          /* 파괴 */
+          stats.destroyed++;
+          stats.broken[level]++;
+          saveStats();
+          showMessage("💥 +" + level + " " + s.name + "이(가) 파괴되었습니다!", "destroy");
+          setSwordEffect("shatter");
+          flashScreen("red");
+          quakeCard();
+
+          setTimeout(function () {
+            setSwordEffect("");
+            level = 0;
+            endEnhance();
+          }, 800);
+        }
+
+      } else {
+        /* 실패 */
+        showMessage("💦 강화 실패... 단계가 그대로입니다", "fail");
+        setSwordEffect("dud");
+        endEnhance();
+      }
+    }
+
+    /* ===== 판매 ===== */
+    sellBtn.addEventListener("click", function () {
+      const s = swords[level];
+      gold += s.price;
+      stats.earned += s.price;
+      saveStats();
+      showMessage("💰 " + s.price.toLocaleString() + " G에 판매했습니다. 다시 나무 막대기부터!", "success");
+      level = 0;
+      setSwordEffect("");
+      render();
+    });
+
+    document.getElementById("restart").addEventListener("click", function () {
+      location.reload();
+    });
+
+    /* ===== 도감 ===== */
+    const dex = document.getElementById("dex");
+    const statsBox = document.getElementById("stats");
+    const dexGrid = document.getElementById("dex-grid");
+    const dexDetail = document.getElementById("dex-detail");
+
+    /* 통계 칸 하나 만들기 */
+    function statHTML(value, label) {
+      return "<div class='stat'><div class='stat-value'>" + value +
+             "</div><div class='stat-label'>" + label + "</div></div>";
+    }
+
+    /* 도감 창 내용 그리기 */
+    function renderDex() {
+      /* 1) 통계 */
+      let successRate = 0;
+      if (stats.tries > 0) {
+        successRate = Math.round(stats.success / stats.tries * 100);
+      }
+      statsBox.innerHTML =
+        statHTML("+" + stats.best, "최고 기록") +
+        statHTML(countDiscovered() + " / " + swords.length, "도감 수집") +
+        statHTML(stats.tries.toLocaleString() + "회", "강화 시도") +
+        statHTML(successRate + "%", "실제 성공률") +
+        statHTML(stats.destroyed.toLocaleString() + "회", "파괴된 검") +
+        statHTML(stats.earned.toLocaleString() + " G", "판매 수익") +
+        statHTML(stats.clears + "회", "전설의 검 완성");
+
+      /* 2) 검 카드 21장 */
+      dexGrid.innerHTML = "";
+      for (let i = 0; i < swords.length; i++) {
+        const dexCard = document.createElement("div");
+        dexCard.className = "dex-card";
+
+        const found = stats.reached[i] > 0;
+        if (found) {
+          dexCard.innerHTML =
+            "<img src='images/sword" + i + ".svg'><div>+" + i + "</div><div>" + swords[i].name + "</div>";
+          dexCard.addEventListener("click", function () {
+            showDetail(i, dexCard);
+          });
+        } else {
+          dexCard.className = "dex-card locked";
+          dexCard.innerHTML =
+            "<img src='images/sword" + i + ".svg'><div>+" + i + "</div><div>???</div>";
+        }
+        dexGrid.appendChild(dexCard);
+      }
+
+      /* 3) 안내 문구 */
+      dexDetail.innerHTML = "<div class='detail-story'>등록된 검을 눌러 이야기를 읽어보세요.</div>";
+    }
+
+    /* 검 하나의 이야기 보여주기 */
+    function showDetail(i, dexCard) {
+      /* 선택 표시를 옮기기 */
+      const cards = dexGrid.querySelectorAll(".dex-card");
+      for (let k = 0; k < cards.length; k++) {
+        cards[k].classList.remove("selected");
+      }
+      dexCard.classList.add("selected");
+
+      dexDetail.innerHTML =
+        "<img src='images/sword" + i + ".svg'>" +
+        "<div>" +
+          "<div class='detail-name'>+" + i + " " + swords[i].name + "</div>" +
+          "<div class='detail-story'>" + stories[i] + "</div>" +
+          "<div class='detail-record'>달성 " + stats.reached[i] + "회 · 이 단계에서 파괴 " + stats.broken[i] + "회</div>" +
+        "</div>";
+    }
+
+    /* 열기 / 닫기 */
+    document.getElementById("dex-open").addEventListener("click", function () {
+      renderDex();
+      dex.classList.remove("hidden");
+    });
+    document.getElementById("dex-close").addEventListener("click", function () {
+      dex.classList.add("hidden");
+    });
+    /* 바깥 어두운 부분을 눌러도 닫히게 */
+    dex.addEventListener("click", function (event) {
+      if (event.target === dex) {
+        dex.classList.add("hidden");
+      }
+    });
+
+    /* 기록 초기화 */
+    document.getElementById("reset-stats").addEventListener("click", function () {
+      if (confirm("도감과 모든 기록을 지울까요? 되돌릴 수 없어요.")) {
+        localStorage.removeItem(SAVE_KEY);
+        location.reload();
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>
